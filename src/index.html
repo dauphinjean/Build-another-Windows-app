@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gentle Phone Transfer</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f5f7fb;margin:0;padding:28px;color:#0f172a}
+    .wrap{max-width:760px;margin:0 auto}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,.06);padding:22px;margin:14px 0}
+    h1{margin:0 0 8px;font-size:28px}
+    .sub{color:#475569;margin:0 0 10px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    input{flex:1;min-width:240px;font-size:18px;padding:12px 14px;border-radius:12px;border:1px solid #cbd5e1}
+    button{font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid #cbd5e1;background:#7c3aed;color:#fff;cursor:pointer}
+    button.secondary{background:#fff;color:#0f172a}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#fff}
+    .dot{width:10px;height:10px;border-radius:999px;background:#f59e0b}
+    .dot.ok{background:#10b981}
+    .muted{color:#64748b;font-size:13px;margin-top:10px}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h1>Gentle Phone Transfer</h1>
+          <p class="sub">Complex tools, simplified.</p>
+        </div>
+        <span class="badge"><span id="dot" class="dot"></span><span id="status">Not connected</span></span>
+      </div>
+
+      <h3 style="margin:16px 0 8px">Connect this computer</h3>
+      <div class="row">
+        <input id="site" placeholder="Site (example: https://artropical.com)" />
+        <input id="code" placeholder="Pairing code (example: GS-123-456)" />
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="pair">Connect</button>
+        <button id="test" class="secondary">Test Connection</button>
+      </div>
+
+      <p class="muted">
+        Tip: get your pairing code from <code>WP Admin → GentleSite → Phone Transfer</code>.
+      </p>
+      <pre id="log" style="margin-top:14px;white-space:pre-wrap;background:#0b1220;color:#e2e8f0;border-radius:14px;padding:12px;min-height:120px"></pre>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px">What this MVP can do</h3>
+      <ul style="margin:0;color:#334155;line-height:1.7">
+        <li>Secure pairing with your GentleSite dashboard</li>
+        <li>Heartbeat status (Connected / Not connected)</li>
+        <li>Foundation for upload + iPhone DCIM scan in next version</li>
+      </ul>
+      <p class="muted">This build is a starter. We’ll add transfers after pairing is stable.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const dotEl = document.getElementById('dot');
+
+    function log(msg){
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function invoke(cmd, payload){
+      return await window.__TAURI__.core.invoke(cmd, payload);
+    }
+
+    function setConnected(ok){
+      statusEl.textContent = ok ? "Connected" : "Not connected";
+      dotEl.className = ok ? "dot ok" : "dot";
+    }
+
+    document.getElementById('pair').addEventListener('click', async () => {
+      const site = document.getElementById('site').value.trim();
+      const code = document.getElementById('code').value.trim();
+      if(!site || !code){ log("Please enter site + pairing code."); return; }
+      try{
+        log("Pairing...");
+        const res = await invoke('pair', { site, pairingCode: code });
+        log("Paired ✓ Device ID: " + res.device_id);
+        log("Saved token locally.");
+        setConnected(true);
+      }catch(e){
+        log("Pair failed: " + (e?.toString?.() ?? e));
+        setConnected(false);
+      }
+    });
+
+    document.getElementById('test').addEventListener('click', async () => {
+      try{
+        log("Testing connection (heartbeat)...");
+        const ok = await invoke('heartbeat', {});
+        log(ok ? "Heartbeat ✓" : "Heartbeat failed");
+        setConnected(!!ok);
+      }catch(e){
+        log("Heartbeat error: " + (e?.toString?.() ?? e));
+        setConnected(false);
+      }
+    });
+
+    try{
+      const cfg = await invoke('get_config', {});
+      if(cfg?.site) document.getElementById('site').value = cfg.site;
+      if(cfg?.paired) setConnected(true);
+    }catch(e){}
+  </script>
+</body>
+</html>
