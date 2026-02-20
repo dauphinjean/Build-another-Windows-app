@@ -12,7 +12,7 @@ struct AppConfig {
 }
 
 fn config_path() -> PathBuf {
-  let mut dir = tauri::api::path::home_dir().unwrap_or(std::env::temp_dir());
+let mut dir = tauri::path::home_dir().unwrap_or(std::env::temp_dir());
   dir.push(".gentlesite");
   let _ = fs::create_dir_all(&dir);
   dir.push("gentle-phone-transfer.json");
