@@ -10,9 +10,14 @@ struct AppConfig {
   device_token: Option<String>,
   paired: bool,
 }
-
 fn config_path() -> PathBuf {
-let mut dir = tauri::path::home_dir().unwrap_or(std::env::temp_dir());
+  // Windows-safe config location: %APPDATA%\.gentlesite\gentle-phone-transfer.json
+  // Fallback: temp dir
+  let base = std::env::var_os("APPDATA")
+    .map(PathBuf::from)
+    .unwrap_or_else(|| std::env::temp_dir());
+
+  let mut dir = base;
   dir.push(".gentlesite");
   let _ = fs::create_dir_all(&dir);
   dir.push("gentle-phone-transfer.json");
